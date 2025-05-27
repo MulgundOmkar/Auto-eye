@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload image</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 600px;
+            height: auto;
+            background-color: #fff;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .content {
+            text-align: center;
+            width:500px;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="file"]:focus {
+            border-color:  #4cae4c;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color:  #4cae4c;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color:  #4cae4c;
+        }
+
+        #matchingCarsContainer {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        ul {
+            padding: 0;
+        }
+
+        ul li {
+            margin-bottom: 10px;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        ul li:last-child {
+            margin-bottom: 0;
+        }
+
+        p {
+            font-style: italic;
+            color: #888;
+        }
+
+        .car-info {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        .car-info li {
+            margin-bottom: 5px;
+        }
+
+        .parking-space {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<div class="container">
+    <div class="content">
+        <h1>Capture the car image</h1>
+        <video id="video" width="440" height="380"   autoplay></video>
+        <button id="captureButton">Capture Image</button>
+        <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+        <p id="captureStatus" class="capture-status" style="display:none;">Image captured successfully!</p>
+        <button onclick="performOCR()">Fetch the details</button>
+        <div id="matchingCarsContainer"></div>
+        <div id="totalCars" class="total-cars"></div>
+        <div id="parkingSpace" class="parking-space"></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/tesseract.js"></script>
+
+<script>
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    let capturedImage;
+
+    function initCamera() {
+        const video = document.getElementById('video');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing camera: ", err);
+            });
+    }
+
+    document.getElementById('captureButton').addEventListener('click', () => {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => {
+            capturedImage = blob;
+            document.getElementById('captureStatus').style.display = 'block'; // Show the capture status message
+        });
+    });
+
+    function performOCR() {
+        const uploadTimeISO = new Date().toISOString(); // Get the current time in ISO format
+        const uploadTime = new Date(uploadTimeISO).toLocaleString('en-GB', { hour12: false }).replace(',', ''); // Convert to desired format
+
+        if (!capturedImage) {
+            console.log('Please capture an image first.');
+            return;
+        }
+
+        Tesseract.recognize(
+            capturedImage,
+            'eng',
+            { logger: m => console.log(m) }
+        ).then(({ data: { text } }) => {
+            console.log('Extracted Text:', text);
+
+            const csrftoken = getCookie('csrftoken');
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "{% url 'extract_text' %}", true);
+            xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+
+            xhr.onload = function () {
+                if (xhr.status == 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.status === 'success') {
+                        const matchingCars = response.matching_cars;
+                        console.log('Matching Cars:', matchingCars);
+                        displayMatchingCars(matchingCars);
+                        updateParkingSpace(matchingCars.length, response.total_cars); // Update parking space count
+                        displayTotalCars(response.total_cars); // Update total registered cars count
+                    } else {
+                        console.error('Error:', response.message);
+                    }
+                }
+            };
+
+            xhr.send(JSON.stringify({ text: text, upload_time: uploadTime })); // Include formatted upload time in the request
+        });
+    }
+
+    function displayMatchingCars(matchingCars) {
+        const matchingCarsContainer = document.getElementById('matchingCarsContainer');
+        matchingCarsContainer.innerHTML = ''; // Clear previous content
+
+        const welcomeMessage = document.createElement('p');
+        welcomeMessage.innerHTML = '<strong>Welcome to the parking!</strong>';
+        matchingCarsContainer.appendChild(welcomeMessage);
+
+        if (matchingCars.length > 0) {
+            matchingCars.forEach(car => {
+                const ul = document.createElement('ul');
+                ul.classList.add('car-info');
+
+                const keys = Object.keys(car);
+                keys.forEach(key => {
+                    const li = document.createElement('li');
+                    li.textContent = `${key}: ${car[key]}`;
+                    ul.appendChild(li);
+                });
+
+                matchingCarsContainer.appendChild(ul);
+            });
+        } else {
+            const p = document.createElement('p');
+            p.textContent = 'No matching cars found.';
+            matchingCarsContainer.appendChild(p);
+        }
+    }
+
+    function updateParkingSpace(occupiedSpace, totalCars) {
+        const totalSpace = 10; // Assuming total parking space is 10
+        const availableSpace = totalSpace - totalCars;
+        const parkingSpaceElement = document.getElementById('parkingSpace');
+        parkingSpaceElement.textContent = `Parking space: ${availableSpace} out of ${totalSpace}`;
+    }
+
+    function displayTotalCars(totalCars) {
+        const totalCarsElement = document.getElementById('totalCars');
+        totalCarsElement.textContent = `Total registered cars: ${totalCars}`;
+    }
+
+    // Initialize camera on page load
+    window.onload = initCamera;
+</script>
+</body>
+</html>

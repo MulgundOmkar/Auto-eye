@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Page</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-color: #f4f4f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+
+    margin-top: 200px;
+    width: 100%;
+    max-width: 400px;
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.form-container {
+    padding: 20px;
+}
+
+.form-container h2 {
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #5cb85c;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.button1 {
+    width: 30%;
+    padding: 6px;
+    background-color: #5a5d5a;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    
+}
+
+button:hover {
+    background-color: #4cae4c;
+}
+
+    </style>
+</head>
+<body>
+    <script src="https://unpkg.com/tesseract.js"></script>
+    <div class="container">
+        <div class="form-container">
+            <h2>Register</h2>
+            <form action="#" method="post" enctype="multipart/form-data"> <!-- Add enctype attribute for file uploads -->
+                {% csrf_token %}
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="Username" name="Username" required>
+                </div>
+                <div class="input-group">
+                    <label for="model_name">Car model</label>
+                    <input type="text" id="model_name" name="model" required>
+                </div>
+                <div class="input-group">
+                    <label for="number_plate">Number plate</label>
+                    <input type="text" id="number_plate" name="number_plate" required>
+                </div>
+                <div class="input-group">
+                    <video id="video" width="340" height="280"   autoplay></video>
+                    <button id="captureButton">Capture Image</button>
+                    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+                    <p id="captureStatus" class="capture-status" style="display:none;">Image captured successfully!</p>
+                </div>
+                <button class="button1" onclick="performOCR()">Extract Text</button>
+                <br><br>
+                <div class="input-group">
+                    <label for="number_plate">Extracted text</label>
+                    <input type="text" id="output" name="extracted_text" required>
+                </div>
+                <button type="submit">Register</button>
+            </form>
+            
+        </div>
+    </div>
+    <script>
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+    
+        let capturedImage;
+    
+        function initCamera() {
+            const video = document.getElementById('video');
+    
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Error accessing camera: ", err);
+                });
+        }
+    
+        document.getElementById('captureButton').addEventListener('click', () => {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+    
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                capturedImage = blob;
+                document.getElementById('captureStatus').style.display = 'block'; // Show the capture status message
+            });
+        });
+    
+        function performOCR() {
+    const uploadTimeISO = new Date().toISOString(); // Get the current time in ISO format
+    const uploadTime = new Date(uploadTimeISO).toLocaleString('en-GB', { hour12: false }).replace(',', ''); // Convert to desired format
+
+    if (!capturedImage) {
+        console.log('Please capture an image first.');
+        return;
+    }
+
+    Tesseract.recognize(
+        capturedImage,
+        'eng',
+        { logger: m => console.log(m) }
+    ).then(({ data: { text } }) => {
+        console.log('Extracted Text:', text);
+
+        // Display the extracted text in the input field
+        document.getElementById('output').value = text.trim();
+
+        const csrftoken = getCookie('csrftoken');
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "{% url 'extract_text' %}", true);
+        xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+
+        xhr.onload = function () {
+            if (xhr.status == 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.status === 'success') {
+                    const matchingCars = response.matching_cars;
+                    console.log('Matching Cars:', matchingCars);
+                    displayMatchingCars(matchingCars);
+                    updateParkingSpace(matchingCars.length, response.total_cars); // Update parking space count
+                    displayTotalCars(response.total_cars); // Update total registered cars count
+                } else {
+                    console.error('Error:', response.message);
+                }
+            }
+        };
+
+        xhr.send(JSON.stringify({ text: text })); // Include formatted upload time in the request
+    });
+}
+
+     
+        // Initialize camera on page load
+        window.onload = initCamera;
+    </script>
+</body>
+</html>
