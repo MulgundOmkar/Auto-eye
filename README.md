@@ -31,10 +31,14 @@ This project uses:
 
 ---
 
+## Run Project
+**NOTE this project runs only on Raspberry pi so directly clone to PI device and run the project on http://localhost:8000/
+ localhost NOTE all the components should be setup and libraries shoud be preinstalled **
+ 
 ## 🛠️ Setup Instructions
 
 ### 1. Clone the Repo
 
 ```bash
-git clone https://github.com/MulgundOmkar/auto-eye.git
-cd auto-eye
+git clone https://github.com/MulgundOmkar/auto-eye-parking.git
+cd auto-eye-parking
