@@ -1,7 +1,7 @@
 # 🚗 Auto Eye Parking System using Raspberry Pi
 
 An automated smart parking assistant using a Raspberry Pi, camera, and GPIO sensors. This system detects cars number plate and identifies the registered cars-numberpalte .
-**This Project is based on Webapplication so that you can it be applicable any where so it aslo includes HTML,CSS,and JavScript nad online Tessract(OCR) extractior**
+**This Project is based on Webapplication so that you can it be applicable any where so it aslo includes HTML,CSS,and JavScript nad online Tessract(OCR) extractior SQL lite (database)**
 ---
 
 ## 📸 Project Summary
@@ -13,8 +13,8 @@ This project uses:
 - A**servo motor** to open and close gate.
 - **GPIO ports** to control LEDs or buzzers as parking indicators.
 - Python + OpenCV for object detection and visual monitoring.
-- Tesseract(OCR),for text extraction.
-- 
+- **Tesseract(OCR)**,for text extraction.
+- **SQL lite** (database management)
 
 ---
 
@@ -33,7 +33,7 @@ This project uses:
 
 ## Run Project
 **NOTE this project runs only on Raspberry pi so directly clone to PI device and run the project on http://localhost:8000/
- localhost NOTE all the components should be setup and libraries shoud be preinstalled **
+ localhost NOTE all the components should be setup and libraries shoud be preinstalled link it to sql database **
  
 ## 🛠️ Setup Instructions
 
