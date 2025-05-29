@@ -1,7 +1,7 @@
 # 🚗 Auto Eye Parking System using Raspberry Pi
 
 An automated smart parking assistant using a Raspberry Pi, camera, and GPIO sensors. This system detects cars number plate and identifies the registered cars-numberpalte .
-**This Project is based on Webapplication so that you can it be applicable any where so it aslo includes HTML,CSS,and JavScript nad online Tessract(OCR) extractior SQL lite (database)**
+**This Project is based on Webapplication so that you can it be applicable any where so it aslo includes HTML,CSS,and JavScript and online Tessract(OCR) extractior SQL lite (database)**
 ---
 
 ## 📸 Project Summary
